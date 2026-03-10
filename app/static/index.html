@@ -1,0 +1,321 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>MkDocs Editor</title>
+    <link
+      rel="stylesheet"
+      href="https://uicdn.toast.com/editor/latest/toastui-editor.min.css"
+    />
+    <link rel="stylesheet" href="/static/styles.css" />
+  </head>
+  <body>
+    <div id="app">
+      <header class="topbar">
+        <h1>{{ t('app.title') }}</h1>
+        <div class="header-actions">
+          <select id="locale-select" v-model="locale" @change="persistLocale" aria-label="Language selection">
+            <option value="de">Deutsch</option>
+            <option value="en">English</option>
+            <option value="fr">Francais</option>
+            <option value="it">Italiano</option>
+            <option value="es">Espanol</option>
+            <option value="ja">Japanese</option>
+            <option value="ko">Korean</option>
+            <option value="zh">Chinese</option>
+          </select>
+        </div>
+      </header>
+
+      <main class="layout">
+        <aside class="panel left-panel">
+          <div class="panel-header">
+            <h2>{{ t('nav.title') }}</h2>
+            <div class="save-controls">
+              <button id="save-nav" type="button" :class="{ 'needs-save': navDirty }" @click="saveNavigation">
+                {{ t('nav.save') }}
+              </button>
+            </div>
+          </div>
+
+          <div class="toolbar">
+            <button id="new-page" type="button" @click="openCreatePageModal">{{ t('nav.newPage') }}</button>
+            <button id="add-link" type="button" @click="openLinkModal('create')">{{ t('nav.link') }}</button>
+            <button id="add-group" type="button" @click="addGroup">{{ t('nav.group') }}</button>
+          </div>
+          <p class="drag-hint">{{ t('nav.dragHint') }}</p>
+
+          <ul id="nav-root" class="tree nav-children">
+            <nav-node
+              v-for="node in nav"
+              :key="node.id"
+              :node="node"
+              :selected-node-id="selectedNodeId"
+              @select-node="selectNode"
+              @edit-node="editNode"
+            ></nav-node>
+          </ul>
+          <div class="panel-footer">
+            <button id="open-settings" type="button" @click="openSettingsModal">{{ t('settings.button') }}</button>
+          </div>
+        </aside>
+
+        <section class="panel editor-panel">
+          <div class="panel-header">
+            <h2>{{ selectedPath || selectedNodeTitle || t('page.noneLoaded') }}</h2>
+          <div class="save-controls header-actions">
+            <button id="edit-page" type="button" @click="editSelectedNode" :disabled="!selectedNodeId">
+              {{ selectedGroupNode ? t('group.edit') : t('page.edit') }}
+            </button>
+            <button id="remove-node" type="button" @click="removeNode" :disabled="!selectedNodeId">{{ t('common.delete') }}</button>
+            <button id="upload-file" type="button" @click="triggerUpload" :disabled="!selectedInternalPageNode">{{ t('page.upload') }}</button>
+            <button id="save-page" type="button" :class="{ 'needs-save': pageDirty }" @click="saveCurrentPage" :disabled="!selectedInternalPageNode">
+              {{ t('page.save') }}
+            </button>
+          </div>
+          </div>
+          <div id="editor" v-show="selectedInternalPageNode"></div>
+          <div v-show="!selectedInternalPageNode" class="editor-empty-state">
+            <strong>{{ selectedGroupNode ? t('group.noContentTitle') : t('page.noContentTitle') }}</strong>
+            <p>{{ selectedGroupNode ? t('group.noContentBody') : t('page.noContentBody') }}</p>
+          </div>
+          <input id="upload-input" ref="uploadInput" type="file" hidden @change="onUploadChange" />
+        </section>
+
+        <section class="panel preview-panel">
+          <div class="panel-header">
+            <h2>{{ t('preview.title') }}</h2>
+            <div class="preview-control compact">
+              <label for="preview-url">{{ t('preview.label') }}</label>
+              <input id="preview-url" v-model="previewUrl" />
+              <button id="reload-preview" type="button" @click="reloadPreview">{{ t('preview.reload') }}</button>
+              <button id="open-preview-tab" type="button" @click="openPreviewInTab">{{ t('preview.openTab') }}</button>
+            </div>
+          </div>
+          <iframe id="preview-frame" :src="previewFrameUrl" title="MkDocs Preview" @load="onPreviewLoad"></iframe>
+        </section>
+      </main>
+
+      <div id="toast" class="toast"></div>
+
+      <div
+        v-if="pageModal.open"
+        class="lightbox"
+        @mousedown="onModalMouseDown"
+        @mouseup="onModalMouseUp"
+      >
+        <form class="lightbox-card" @submit.prevent="submitPageModal">
+          <h3>{{ pageModal.mode === 'create' ? t('nav.newPage') : t('page.edit') }}</h3>
+          <label class="field-label" for="modal-page-title">{{ t('common.title') }}</label>
+          <input id="modal-page-title" v-model="pageModal.title" />
+          <label class="field-label" for="modal-page-path">{{ t('common.filePath') }}</label>
+          <input id="modal-page-path" v-model="pageModal.path" placeholder="guide/start.md" />
+          <p v-if="pageModal.error" class="modal-error">{{ pageModal.error }}</p>
+          <div class="modal-actions">
+            <button type="button" @click="closePageModal">{{ t('common.cancel') }}</button>
+            <button type="submit">{{ t('common.save') }}</button>
+          </div>
+        </form>
+      </div>
+
+      <div
+        v-if="linkModal.open"
+        class="lightbox"
+        @mousedown="onLinkModalMouseDown"
+        @mouseup="onLinkModalMouseUp"
+      >
+        <form class="lightbox-card" @submit.prevent="submitLinkModal">
+          <h3>{{ linkModal.mode === 'create' ? t('link.new') : t('link.edit') }}</h3>
+          <label class="field-label" for="modal-link-title">{{ t('common.title') }}</label>
+          <input id="modal-link-title" v-model="linkModal.title" />
+          <label class="field-label" for="modal-link-type">{{ t('link.type') }}</label>
+          <select id="modal-link-type" v-model="linkModal.kind">
+            <option value="internal">{{ t('link.typeInternal') }}</option>
+            <option value="external">{{ t('link.typeExternal') }}</option>
+          </select>
+          <label class="field-label" for="modal-link-path">
+            {{ linkModal.kind === 'external' ? t('link.url') : t('common.filePath') }}
+          </label>
+          <input
+            id="modal-link-path"
+            v-model="linkModal.path"
+            :placeholder="linkModal.kind === 'external' ? 'https://example.com' : t('link.pathExample')"
+          />
+          <p v-if="linkModal.error" class="modal-error">{{ linkModal.error }}</p>
+          <div class="modal-actions">
+            <button type="button" @click="closeLinkModal">{{ t('common.cancel') }}</button>
+            <button type="submit">{{ t('common.save') }}</button>
+          </div>
+        </form>
+      </div>
+
+      <div
+        v-if="groupModal.open"
+        class="lightbox"
+        @mousedown="onGroupModalMouseDown"
+        @mouseup="onGroupModalMouseUp"
+      >
+        <form class="lightbox-card" @submit.prevent="submitGroupModal">
+          <h3>{{ t('group.edit') }}</h3>
+          <label class="field-label" for="modal-group-title">{{ t('common.title') }}</label>
+          <input id="modal-group-title" v-model="groupModal.title" />
+          <p v-if="groupModal.error" class="modal-error">{{ groupModal.error }}</p>
+          <div class="modal-actions">
+            <button type="button" @click="closeGroupModal">{{ t('common.cancel') }}</button>
+            <button type="submit">{{ t('common.save') }}</button>
+          </div>
+        </form>
+      </div>
+
+      <div
+        v-if="settingsModal.open"
+        class="lightbox"
+        @mousedown="onSettingsModalMouseDown"
+        @mouseup="onSettingsModalMouseUp"
+      >
+        <form class="lightbox-card settings-card" @submit.prevent="saveSettingsModal">
+          <h3>{{ t('settings.title') }}</h3>
+          <div class="modal-tabs">
+            <button type="button" :class="{ active: settingsModal.tab === 'form' }" @click="settingsModal.tab = 'form'">
+              {{ t('settings.form') }}
+            </button>
+            <button type="button" :class="{ active: settingsModal.tab === 'raw' }" @click="switchToRawConfigTab">
+              Raw YAML
+            </button>
+          </div>
+
+          <template v-if="settingsModal.tab === 'form'">
+            <label class="field-label" for="settings-site-name">{{ t('settings.siteName') }}</label>
+            <input id="settings-site-name" v-model="settingsModal.siteName" placeholder="My Docs" />
+
+            <label class="field-label" for="settings-doc-language">{{ t('settings.docLanguage') }}</label>
+            <select id="settings-doc-language" v-model="settingsModal.docLanguage">
+              <option value="">{{ t('settings.autoDefault') }}</option>
+              <option
+                v-if="settingsModal.docLanguage && !hasOption(settingsOptions.docLanguages, settingsModal.docLanguage)"
+                :value="settingsModal.docLanguage"
+              >
+                {{ settingsModal.docLanguage }}
+              </option>
+              <option v-for="item in settingsOptions.docLanguages" :key="item.value" :value="item.value">{{ item.label }}</option>
+            </select>
+
+            <label class="field-label" for="settings-logo-path">{{ t('settings.logoPath') }}</label>
+            <div class="inline-actions">
+              <input id="settings-logo-path" v-model="settingsModal.logoPath" placeholder="assets/logo.svg" />
+              <button type="button" @click="triggerLogoUpload">{{ t('settings.logoUpload') }}</button>
+            </div>
+            <input ref="settingsLogoInput" type="file" hidden accept=".png,.jpg,.jpeg,.gif,.svg,.webp" @change="onLogoUploadChange" />
+
+            <label class="field-label" for="settings-logo-icon">{{ t('settings.logoIcon') }}</label>
+            <select id="settings-logo-icon" v-model="settingsModal.logoIcon">
+              <option value="">{{ t('settings.autoDefault') }}</option>
+              <option
+                v-if="settingsModal.logoIcon && !hasOption(settingsOptions.logoIcons, settingsModal.logoIcon)"
+                :value="settingsModal.logoIcon"
+              >
+                {{ settingsModal.logoIcon }}
+              </option>
+              <option v-for="item in settingsOptions.logoIcons" :key="item" :value="item">{{ item }}</option>
+            </select>
+
+            <label class="field-label" for="settings-palette-primary">{{ t('settings.primaryColor') }}</label>
+            <select id="settings-palette-primary" v-model="settingsModal.primaryColor">
+              <option value="">{{ t('settings.autoDefault') }}</option>
+              <option
+                v-if="settingsModal.primaryColor && !hasOption(settingsOptions.paletteColors, settingsModal.primaryColor)"
+                :value="settingsModal.primaryColor"
+              >
+                {{ settingsModal.primaryColor }}
+              </option>
+              <option v-for="item in settingsOptions.paletteColors" :key="`p-${item}`" :value="item">{{ item }}</option>
+            </select>
+
+            <label class="field-label" for="settings-palette-accent">{{ t('settings.accentColor') }}</label>
+            <select id="settings-palette-accent" v-model="settingsModal.accentColor">
+              <option value="">{{ t('settings.autoDefault') }}</option>
+              <option
+                v-if="settingsModal.accentColor && !hasOption(settingsOptions.paletteColors, settingsModal.accentColor)"
+                :value="settingsModal.accentColor"
+              >
+                {{ settingsModal.accentColor }}
+              </option>
+              <option v-for="item in settingsOptions.paletteColors" :key="`a-${item}`" :value="item">{{ item }}</option>
+            </select>
+
+            <label class="field-label" for="settings-palette-scheme">{{ t('settings.colorScheme') }}</label>
+            <select id="settings-palette-scheme" v-model="settingsModal.colorScheme">
+              <option value="">{{ t('settings.autoDefault') }}</option>
+              <option
+                v-if="settingsModal.colorScheme && !hasOption(settingsOptions.paletteSchemes, settingsModal.colorScheme)"
+                :value="settingsModal.colorScheme"
+              >
+                {{ settingsModal.colorScheme }}
+              </option>
+              <option v-for="item in settingsOptions.paletteSchemes" :key="item" :value="item">{{ item }}</option>
+            </select>
+
+            <label class="field-label" for="settings-upload-dir">{{ t('settings.uploadDir') }}</label>
+            <input id="settings-upload-dir" v-model="settingsModal.uploadDir" placeholder="assets/uploads" />
+
+            <label class="field-label" for="settings-upload-types">{{ t('settings.allowedTypes') }}</label>
+            <input id="settings-upload-types" v-model="settingsModal.allowedTypesText" placeholder=".png,.jpg,.pdf" />
+
+            <label class="field-checkbox">
+              <input type="checkbox" v-model="settingsModal.navigationTabs" />
+              {{ t('settings.navTabs') }}
+            </label>
+
+            <details class="settings-help">
+              <summary>{{ t('settings.managedSummary') }}</summary>
+              <p>{{ t('settings.managedKeys') }}</p>
+            </details>
+          </template>
+
+          <template v-else>
+            <label class="field-label" for="settings-raw">mkdocs.yml</label>
+            <textarea id="settings-raw" class="raw-yaml" v-model="settingsModal.rawConfig"></textarea>
+          </template>
+
+          <p v-if="settingsModal.error" class="modal-error">{{ settingsModal.error }}</p>
+          <div class="modal-actions">
+            <button type="button" @click="closeSettingsModal">{{ t('common.cancel') }}</button>
+            <button type="submit">{{ t('common.save') }}</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <script type="text/x-template" id="nav-node-template">
+      <li class="nav-li" :data-node-id="node.id">
+        <button
+          type="button"
+          class="tree-item"
+          :class="{ selected: node.id === selectedNodeId }"
+          @click="$emit('select-node', node)"
+          @dblclick="$emit('edit-node', node)"
+        >
+          {{ node.type === 'group' ? '📁 ' + node.title : '📄 ' + node.title + ' (' + node.path + ')' }}
+        </button>
+        <div v-if="node.type === 'group'" class="group-dropzone">
+          <ul class="nav-children">
+            <nav-node
+              v-for="child in node.children"
+              :key="child.id"
+              :node="child"
+              :selected-node-id="selectedNodeId"
+              @select-node="$emit('select-node', $event)"
+              @edit-node="$emit('edit-node', $event)"
+            ></nav-node>
+          </ul>
+        </div>
+      </li>
+    </script>
+
+    <script src="https://uicdn.toast.com/editor/latest/toastui-editor-all.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vue@3/dist/vue.global.prod.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
+    <script src="/static/app.js" defer></script>
+  </body>
+</html>
