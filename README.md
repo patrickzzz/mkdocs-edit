@@ -1,4 +1,4 @@
-# mkdocs-edit
+# MkDocsEdit
 
 A local content editor for MkDocs projects with live preview, navigation editing, uploads, and project settings.
 
@@ -120,6 +120,7 @@ Managed keys include:
 
 - `site_name`
 - `theme.features` (`navigation.tabs`)
+- `theme.features` (`navigation.tabs`, `navigation.tabs.sticky`)
 - `theme.language`
 - `theme.logo`
 - `theme.icon.logo`
@@ -155,7 +156,10 @@ theme:
   name: material
   features:
     - navigation.tabs
+    - navigation.tabs.sticky
 ```
+
+Note: `navigation.tabs*`, `theme.palette`, and `theme.icon.logo` are Material-focused settings.
 
 ## License
 

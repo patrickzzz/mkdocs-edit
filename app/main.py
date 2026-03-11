@@ -18,6 +18,9 @@ PROJECT_DIR = Path(os.environ.get("MKDOCS_EDIT_PROJECT", os.getcwd())).resolve()
 DOCS_DIR = PROJECT_DIR / "docs"
 MKDOCS_CONFIG = PROJECT_DIR / "mkdocs.yml"
 STATIC_DIR = Path(__file__).resolve().parent / "static"
+DEFAULT_PREVIEW_URL = os.environ.get("MKDOCS_EDIT_PREVIEW_URL", "http://127.0.0.1:8000")
+
+DOCS_DIR.mkdir(parents=True, exist_ok=True)
 
 yaml = YAML()
 yaml.preserve_quotes = True
@@ -25,6 +28,7 @@ yaml.indent(mapping=2, sequence=4, offset=2)
 
 app = FastAPI(title="MkDocs Editor")
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
+app.mount("/assets", StaticFiles(directory=DOCS_DIR / "assets", check_dir=False), name="docs-assets")
 
 
 class SavePageRequest(BaseModel):
@@ -99,14 +103,20 @@ WINDOWS_RESERVED_NAMES = {
 
 
 def safe_doc_path(relative_path: str) -> Path:
-    cleaned = relative_path.strip().lstrip("/")
+    cleaned = relative_path.strip().replace("\\", "/")
     if not cleaned:
         raise HTTPException(status_code=400, detail="Empty path is not allowed")
-    candidate = (DOCS_DIR / cleaned).resolve()
-    docs_root = DOCS_DIR.resolve()
-    if docs_root not in candidate.parents and candidate != docs_root:
+
+    rel = Path(cleaned)
+    if rel.is_absolute() or ".." in rel.parts:
         raise HTTPException(status_code=400, detail="Invalid path")
-    return candidate
+
+    docs_root_abs = Path(os.path.abspath(DOCS_DIR))
+    candidate_abs = Path(os.path.abspath(docs_root_abs / rel))
+    if os.path.commonpath([str(docs_root_abs), str(candidate_abs)]) != str(docs_root_abs):
+        raise HTTPException(status_code=400, detail="Invalid path")
+
+    return candidate_abs
 
 
 def ensure_project_layout() -> None:
@@ -168,13 +178,17 @@ def get_upload_settings(config: dict[str, Any]) -> tuple[list[str], str]:
 
 
 def get_theme_tabs_enabled(config: dict[str, Any]) -> bool:
+    return get_theme_feature_enabled(config, "navigation.tabs")
+
+
+def get_theme_feature_enabled(config: dict[str, Any], feature_name: str) -> bool:
     theme = config.get("theme", {})
     if not isinstance(theme, dict):
         return False
     features = theme.get("features", [])
     if not isinstance(features, list):
         return False
-    return "navigation.tabs" in features
+    return feature_name in features
 
 
 def get_theme_language(config: dict[str, Any]) -> str:
@@ -277,6 +291,13 @@ def apply_settings_to_config(config: dict[str, Any], request: SaveSettingsReques
                 features.append("navigation.tabs")
             if not tabs_enabled:
                 features = [feature for feature in features if feature != "navigation.tabs"]
+
+        tabs_sticky = request.theme.get("navigation_tabs_sticky")
+        if isinstance(tabs_sticky, bool):
+            if tabs_sticky and "navigation.tabs.sticky" not in features:
+                features.append("navigation.tabs.sticky")
+            if not tabs_sticky:
+                features = [feature for feature in features if feature != "navigation.tabs.sticky"]
 
         language = request.theme.get("language")
         if isinstance(language, str):
@@ -456,6 +477,14 @@ def get_page(path: str) -> dict[str, str]:
     return {"path": path, "content": page.read_text(encoding="utf-8")}
 
 
+@app.get("/_docs/{file_path:path}")
+def get_docs_asset(file_path: str) -> FileResponse:
+    target = safe_doc_path(file_path)
+    if not target.exists() or not target.is_file():
+        raise HTTPException(status_code=404, detail="Asset not found")
+    return FileResponse(target)
+
+
 @app.post("/api/page")
 def save_page(request: SavePageRequest) -> dict[str, str]:
     page = safe_doc_path(request.path)
@@ -513,14 +542,22 @@ def list_markdown_files() -> dict[str, list[str]]:
 def get_editor_settings() -> dict[str, Any]:
     config = load_mkdocs_config()
     allowed_types, upload_dir = get_upload_settings(config)
+    use_directory_urls = config.get("use_directory_urls", True)
+    if not isinstance(use_directory_urls, bool):
+        use_directory_urls = True
     return {
         "site_name": str(config.get("site_name", "")),
+        "preview": {
+            "url": DEFAULT_PREVIEW_URL,
+            "use_directory_urls": use_directory_urls,
+        },
         "upload": {
             "allowed_types": allowed_types,
             "dir": upload_dir,
         },
         "theme": {
             "navigation_tabs": get_theme_tabs_enabled(config),
+            "navigation_tabs_sticky": get_theme_feature_enabled(config, "navigation.tabs.sticky"),
             "language": get_theme_language(config),
             "logo": get_theme_logo(config),
             "logo_icon": get_theme_logo_icon(config),

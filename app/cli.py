@@ -81,6 +81,8 @@ def run(argv: list[str]) -> int:
 
     env = os.environ.copy()
     env["MKDOCS_EDIT_PROJECT"] = str(project_dir)
+    preview_host = args.mkdocs_host if args.mkdocs_host not in {"0.0.0.0", "::"} else "127.0.0.1"
+    env["MKDOCS_EDIT_PREVIEW_URL"] = f"http://{preview_host}:{args.mkdocs_port}"
 
     children: list[subprocess.Popen[bytes]] = []
     if not args.no_mkdocs:

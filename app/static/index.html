@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>MkDocs Editor</title>
+    <title>MkDocsEdit</title>
     <link
       rel="stylesheet"
       href="https://uicdn.toast.com/editor/latest/toastui-editor.min.css"
@@ -13,17 +13,17 @@
   <body>
     <div id="app">
       <header class="topbar">
-        <h1>{{ t('app.title') }}</h1>
+        <h1>{{ t('app.title') }}<span v-if="settings.siteName">: {{ settings.siteName }}</span></h1>
         <div class="header-actions">
-          <select id="locale-select" v-model="locale" @change="persistLocale" aria-label="Language selection">
-            <option value="de">Deutsch</option>
+          <select id="locale-select" class="locale-select" v-model="locale" @change="persistLocale" aria-label="Language selection">
             <option value="en">English</option>
+            <option value="de">Deutsch</option>
             <option value="fr">Francais</option>
             <option value="it">Italiano</option>
             <option value="es">Espanol</option>
-            <option value="ja">Japanese</option>
-            <option value="ko">Korean</option>
-            <option value="zh">Chinese</option>
+            <option value="ja">日本語</option>
+            <option value="ko">한국어</option>
+            <option value="zh">中文</option>
           </select>
         </div>
       </header>
@@ -266,6 +266,13 @@
               <input type="checkbox" v-model="settingsModal.navigationTabs" />
               {{ t('settings.navTabs') }}
             </label>
+
+            <label class="field-checkbox">
+              <input type="checkbox" v-model="settingsModal.navigationTabsSticky" />
+              {{ t('settings.navTabsSticky') }}
+            </label>
+
+            <p class="settings-note">{{ t('settings.firstGroupHint') }}</p>
 
             <details class="settings-help">
               <summary>{{ t('settings.managedSummary') }}</summary>

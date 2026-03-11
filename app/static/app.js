@@ -1,6 +1,7 @@
 const { createApp, nextTick } = Vue;
 
 let nodeCounter = 0;
+const EDITOR_MODE_STORAGE_KEY = "mkdocs-edit-editor-mode";
 
 function createNodeId() {
   nodeCounter += 1;
@@ -48,20 +49,20 @@ function buildNodeMap(nodes, map = {}) {
 
 const I18N = {
   de: {
-    "app.title": "MkDocs Editor",
+    "app.title": "MkDocsEdit",
     "preview.label": "Preview",
-    "preview.reload": "Reload",
+    "preview.reload": "Neu laden",
     "preview.openTab": "Im Tab öffnen",
     "preview.title": "mkdocs serve",
     "nav.title": "Navigation",
     "nav.save": "Nav speichern",
     "nav.newPage": "Neue Seite",
-    "nav.link": "Link",
+    "nav.link": "Verweis",
     "nav.group": "Gruppe",
     "nav.dragHint": "Sortieren per Drag and Drop: Ziehen zwischen Gruppen oder im Root.",
     "page.noneLoaded": "Keine Seite geladen",
     "page.edit": "Seite bearbeiten",
-    "page.upload": "Upload",
+    "page.upload": "Datei hochladen",
     "page.save": "Speichern",
     "page.noContentTitle": "Kein Seiteninhalt editierbar",
     "page.noContentBody": "Dieser Eintrag verweist extern. Du kannst den Link ueber 'Seite bearbeiten' aendern.",
@@ -94,7 +95,9 @@ const I18N = {
     "settings.colorScheme": "Farbschema",
     "settings.uploadDir": "Upload Ordner (unter docs/)",
     "settings.allowedTypes": "Erlaubte Datei-Endungen (Komma-getrennt)",
-    "settings.navTabs": "Hauptmenü als Top-Tabs aktivieren (Material: navigation.tabs)",
+    "settings.navTabs": "Hauptmenü als Top-Tabs aktivieren (Material only)",
+    "settings.navTabsSticky": "Top-Tabs im Header fixieren (Material only)",
+    "settings.firstGroupHint": "Mit Top-Tabs wird die erste Navigationsebene (z. B. erste Gruppe) im Header-Menü angezeigt.",
     "settings.managedSummary": "Welche Settings werden hier gepflegt?",
     "settings.managedKeys": "site_name, theme.language, theme.logo, theme.icon.logo, theme.palette.{scheme,primary,accent}, theme.features[navigation.tabs], editor.upload.*",
     "language.label": "Sprache",
@@ -144,7 +147,7 @@ const I18N = {
     "runtime.editExternalViaLink": "Externe Links bitte ueber 'Link bearbeiten' aendern",
   },
   en: {
-    "app.title": "MkDocs Editor",
+    "app.title": "MkDocsEdit",
     "preview.label": "Preview",
     "preview.reload": "Reload",
     "preview.openTab": "Open in tab",
@@ -190,7 +193,9 @@ const I18N = {
     "settings.colorScheme": "Color scheme",
     "settings.uploadDir": "Upload directory (under docs/)",
     "settings.allowedTypes": "Allowed file extensions (comma separated)",
-    "settings.navTabs": "Enable top navigation tabs (Material: navigation.tabs)",
+    "settings.navTabs": "Enable top navigation tabs (Material only)",
+    "settings.navTabsSticky": "Keep top tabs sticky in header (Material only)",
+    "settings.firstGroupHint": "Top tabs use first-level navigation items (for example your first group) in the header menu.",
     "settings.managedSummary": "Which settings are managed here?",
     "settings.managedKeys": "site_name, theme.language, theme.logo, theme.icon.logo, theme.palette.{scheme,primary,accent}, theme.features[navigation.tabs], editor.upload.*",
     "language.label": "Language",
@@ -240,7 +245,7 @@ const I18N = {
     "runtime.editExternalViaLink": "Please edit external links via 'Edit link'",
   },
   fr: {
-    "app.title": "Editeur MkDocs",
+    "app.title": "MkDocsEdit",
     "preview.label": "Apercu",
     "preview.reload": "Recharger",
     "preview.openTab": "Ouvrir onglet",
@@ -286,13 +291,15 @@ const I18N = {
     "settings.colorScheme": "Schema de couleur",
     "settings.uploadDir": "Dossier d'upload (dans docs/)",
     "settings.allowedTypes": "Extensions autorisees (separees par virgules)",
-    "settings.navTabs": "Activer les onglets de navigation (Material: navigation.tabs)",
+    "settings.navTabs": "Activer les onglets de navigation (Material only)",
+    "settings.navTabsSticky": "Conserver les onglets en haut (Material only)",
+    "settings.firstGroupHint": "Les onglets reprennent les elements de premier niveau (ex. votre premier groupe).",
     "settings.managedSummary": "Quels parametres sont geres ici ?",
     "settings.managedKeys": "site_name, theme.language, theme.logo, theme.icon.logo, theme.palette.{scheme,primary,accent}, theme.features[navigation.tabs], editor.upload.*",
     "language.label": "Langue",
   },
   it: {
-    "app.title": "Editor MkDocs",
+    "app.title": "MkDocsEdit",
     "preview.label": "Anteprima",
     "preview.reload": "Ricarica",
     "preview.openTab": "Apri in tab",
@@ -338,13 +345,15 @@ const I18N = {
     "settings.colorScheme": "Schema colore",
     "settings.uploadDir": "Cartella upload (in docs/)",
     "settings.allowedTypes": "Estensioni consentite (separate da virgola)",
-    "settings.navTabs": "Abilita tab di navigazione (Material: navigation.tabs)",
+    "settings.navTabs": "Abilita tab di navigazione (Material only)",
+    "settings.navTabsSticky": "Mantieni i tab fissati in alto (Material only)",
+    "settings.firstGroupHint": "I tab usano gli elementi di primo livello (es. primo gruppo) nell'header.",
     "settings.managedSummary": "Quali impostazioni sono gestite qui?",
     "settings.managedKeys": "site_name, theme.language, theme.logo, theme.icon.logo, theme.palette.{scheme,primary,accent}, theme.features[navigation.tabs], editor.upload.*",
     "language.label": "Lingua",
   },
   es: {
-    "app.title": "Editor MkDocs",
+    "app.title": "MkDocsEdit",
     "preview.label": "Vista previa",
     "preview.reload": "Recargar",
     "preview.openTab": "Abrir en pestana",
@@ -390,20 +399,118 @@ const I18N = {
     "settings.colorScheme": "Esquema de color",
     "settings.uploadDir": "Directorio de subida (en docs/)",
     "settings.allowedTypes": "Extensiones permitidas (separadas por comas)",
-    "settings.navTabs": "Activar pestanas de navegacion (Material: navigation.tabs)",
+    "settings.navTabs": "Activar pestanas de navegacion (Material only)",
+    "settings.navTabsSticky": "Fijar pestanas en el encabezado (Material only)",
+    "settings.firstGroupHint": "Las pestanas usan el primer nivel de navegacion (por ejemplo el primer grupo).",
     "settings.managedSummary": "Que ajustes se gestionan aqui?",
     "settings.managedKeys": "site_name, theme.language, theme.logo, theme.icon.logo, theme.palette.{scheme,primary,accent}, theme.features[navigation.tabs], editor.upload.*",
     "language.label": "Idioma",
   },
-  ja: {
-    "language.label": "Language",
-  },
-  ko: {
-    "language.label": "Language",
-  },
-  zh: {
-    "language.label": "Language",
-  },
+  ja: {},
+  ko: {},
+  zh: {},
+};
+
+I18N.ja = {
+  ...I18N.en,
+  "preview.reload": "再読み込み",
+  "preview.openTab": "タブで開く",
+  "nav.save": "ナビを保存",
+  "nav.newPage": "新しいページ",
+  "nav.link": "リンク",
+  "nav.group": "グループ",
+  "page.noneLoaded": "ページが読み込まれていません",
+  "page.edit": "ページを編集",
+  "page.upload": "アップロード",
+  "page.save": "保存",
+  "group.edit": "グループを編集",
+  "common.delete": "削除",
+  "common.title": "タイトル",
+  "common.filePath": "ファイル / パス",
+  "common.cancel": "キャンセル",
+  "common.save": "保存",
+  "settings.button": "設定",
+  "settings.title": "設定",
+  "settings.form": "フォーム",
+  "settings.siteName": "サイト名",
+  "settings.docLanguage": "ドキュメント言語",
+  "settings.logoUpload": "ロゴをアップロード",
+  "settings.uploadDir": "アップロード先（docs/配下）",
+  "settings.allowedTypes": "許可する拡張子（カンマ区切り）",
+  "language.label": "言語",
+  "runtime.pageSaved": "ページを保存しました",
+  "runtime.navSaved": "ナビゲーションを保存しました",
+  "runtime.settingsSaved": "設定を保存しました",
+  "runtime.uploadSuccess": "ファイルをアップロードしました",
+  "runtime.nothingToSave": "保存する内容はありません",
+};
+
+I18N.ko = {
+  ...I18N.en,
+  "preview.reload": "새로고침",
+  "preview.openTab": "탭에서 열기",
+  "nav.save": "네비 저장",
+  "nav.newPage": "새 페이지",
+  "nav.link": "링크",
+  "nav.group": "그룹",
+  "page.noneLoaded": "불러온 페이지가 없습니다",
+  "page.edit": "페이지 편집",
+  "page.upload": "업로드",
+  "page.save": "저장",
+  "group.edit": "그룹 편집",
+  "common.delete": "삭제",
+  "common.title": "제목",
+  "common.filePath": "파일 / 경로",
+  "common.cancel": "취소",
+  "common.save": "저장",
+  "settings.button": "설정",
+  "settings.title": "설정",
+  "settings.form": "폼",
+  "settings.siteName": "사이트 이름",
+  "settings.docLanguage": "문서 언어",
+  "settings.logoUpload": "로고 업로드",
+  "settings.uploadDir": "업로드 폴더 (docs 하위)",
+  "settings.allowedTypes": "허용 확장자 (콤마 구분)",
+  "language.label": "언어",
+  "runtime.pageSaved": "페이지가 저장되었습니다",
+  "runtime.navSaved": "네비게이션이 저장되었습니다",
+  "runtime.settingsSaved": "설정이 저장되었습니다",
+  "runtime.uploadSuccess": "파일이 업로드되었습니다",
+  "runtime.nothingToSave": "저장할 내용이 없습니다",
+};
+
+I18N.zh = {
+  ...I18N.en,
+  "preview.reload": "刷新",
+  "preview.openTab": "在新标签打开",
+  "nav.save": "保存导航",
+  "nav.newPage": "新建页面",
+  "nav.link": "链接",
+  "nav.group": "分组",
+  "page.noneLoaded": "未加载页面",
+  "page.edit": "编辑页面",
+  "page.upload": "上传",
+  "page.save": "保存",
+  "group.edit": "编辑分组",
+  "common.delete": "删除",
+  "common.title": "标题",
+  "common.filePath": "文件 / 路径",
+  "common.cancel": "取消",
+  "common.save": "保存",
+  "settings.button": "设置",
+  "settings.title": "设置",
+  "settings.form": "表单",
+  "settings.siteName": "站点名称",
+  "settings.docLanguage": "文档语言",
+  "settings.logoUpload": "上传 Logo",
+  "settings.uploadDir": "上传目录（docs 下）",
+  "settings.allowedTypes": "允许的扩展名（逗号分隔）",
+  "language.label": "语言",
+  "runtime.pageSaved": "页面已保存",
+  "runtime.navSaved": "导航已保存",
+  "runtime.settingsSaved": "设置已保存",
+  "runtime.uploadSuccess": "文件已上传",
+  "runtime.nothingToSave": "没有可保存的内容",
 };
 
 function detectLocaleFromBrowser() {
@@ -455,10 +562,12 @@ createApp({
       selectedNodeId: null,
       navDirty: false,
       pageDirty: false,
+      lastSavedMarkdown: "",
       loadingPage: false,
       previewUrl: "http://127.0.0.1:8000",
       previewFrameUrl: "http://127.0.0.1:8000",
       currentPreviewPath: "/",
+      previewUseDirectoryUrls: true,
       previewTabName: buildProjectPreviewTabName(),
       editor: null,
       sortables: [],
@@ -467,6 +576,7 @@ createApp({
         uploadDir: "assets/uploads",
         uploadAllowedTypes: [],
         navigationTabs: false,
+        navigationTabsSticky: false,
         docLanguage: "",
         logoPath: "",
         logoIcon: "",
@@ -509,6 +619,7 @@ createApp({
         uploadDir: "assets/uploads",
         allowedTypesText: "",
         navigationTabs: false,
+        navigationTabsSticky: false,
         docLanguage: "",
         logoPath: "",
         logoIcon: "",
@@ -608,12 +719,12 @@ createApp({
     this.setupEditor();
     this.bootstrap();
     window.addEventListener("beforeunload", this.beforeUnloadHandler);
-    window.addEventListener("keydown", this.shortcutHandler);
+    window.addEventListener("keydown", this.shortcutHandler, true);
   },
   beforeUnmount() {
     this.destroySortables();
     window.removeEventListener("beforeunload", this.beforeUnloadHandler);
-    window.removeEventListener("keydown", this.shortcutHandler);
+    window.removeEventListener("keydown", this.shortcutHandler, true);
   },
   methods: {
     t(key) {
@@ -661,21 +772,120 @@ createApp({
       }
       return response.json();
     },
+    splitLinkTarget(target) {
+      const hashIndex = target.indexOf("#");
+      const queryIndex = target.indexOf("?");
+      let cutIndex = -1;
+      if (hashIndex >= 0 && queryIndex >= 0) {
+        cutIndex = Math.min(hashIndex, queryIndex);
+      } else if (hashIndex >= 0) {
+        cutIndex = hashIndex;
+      } else if (queryIndex >= 0) {
+        cutIndex = queryIndex;
+      }
+
+      if (cutIndex < 0) {
+        return { path: target, suffix: "" };
+      }
+      return {
+        path: target.slice(0, cutIndex),
+        suffix: target.slice(cutIndex),
+      };
+    },
+    resolveDocPathRelative(target) {
+      const cleanTarget = (target || "").trim();
+      if (!cleanTarget) {
+        return cleanTarget;
+      }
+
+      if (
+        cleanTarget.startsWith("http://") ||
+        cleanTarget.startsWith("https://") ||
+        cleanTarget.startsWith("mailto:") ||
+        cleanTarget.startsWith("tel:") ||
+        cleanTarget.startsWith("#") ||
+        cleanTarget.startsWith("/")
+      ) {
+        return cleanTarget;
+      }
+
+      const split = this.splitLinkTarget(cleanTarget);
+      const pathOnly = split.path;
+      const base = this.selectedPath || "index.md";
+      const baseDir = base.includes("/") ? base.slice(0, base.lastIndexOf("/")) : "";
+      const normalizedBase = baseDir ? `/${baseDir}/` : "/";
+      const url = new URL(pathOnly, `https://local${normalizedBase}`);
+      const resolved = url.pathname.replace(/^\/+/, "");
+      if (!resolved) {
+        return cleanTarget;
+      }
+      return `/_docs/${resolved}${split.suffix}`;
+    },
+    rewriteMarkdownForPreview(markdown) {
+      const source = markdown || "";
+      return source.replace(/(!?\[[^\]]*\]\()([^\s)]+)(\))/g, (_all, prefix, target, suffix) => {
+        const rewritten = this.resolveDocPathRelative(target);
+        return `${prefix}${rewritten}${suffix}`;
+      });
+    },
     createEditorInstance(initialValue = "") {
+      const initialEditType = this.getPreferredEditorMode();
       const instance = new toastui.Editor({
         el: document.querySelector("#editor"),
         height: "100%",
         previewStyle: "vertical",
-        initialEditType: "markdown",
+        initialEditType,
         initialValue,
+        previewBeforeHook: (markdown) => this.rewriteMarkdownForPreview(markdown),
+      });
+      instance.on("changeMode", (mode) => {
+        this.persistEditorMode(mode);
       });
       instance.on("change", () => {
         if (this.loadingPage || !this.selectedPath) {
           return;
         }
-        this.pageDirty = true;
+        const current = this.normalizeMarkdown(this.editor.getMarkdown() || "");
+        this.pageDirty = current !== this.lastSavedMarkdown;
       });
+
+      window.setTimeout(() => {
+        const tabButtons = document.querySelectorAll(".toastui-editor-tabs button");
+        tabButtons.forEach((button) => {
+          button.addEventListener("click", () => {
+            window.setTimeout(() => {
+              this.persistEditorMode(this.getCurrentEditorMode());
+            }, 0);
+          });
+        });
+      }, 0);
+
       return instance;
+    },
+    getPreferredEditorMode() {
+      const mode = window.localStorage.getItem(EDITOR_MODE_STORAGE_KEY);
+      if (mode === "markdown" || mode === "wysiwyg") {
+        return mode;
+      }
+      return "markdown";
+    },
+    persistEditorMode(mode) {
+      if (mode !== "markdown" && mode !== "wysiwyg") {
+        return;
+      }
+      window.localStorage.setItem(EDITOR_MODE_STORAGE_KEY, mode);
+    },
+    getCurrentEditorMode() {
+      if (!this.editor) {
+        return this.getPreferredEditorMode();
+      }
+      if (typeof this.editor.isWysiwygMode === "function" && this.editor.isWysiwygMode()) {
+        return "wysiwyg";
+      }
+      return "markdown";
+    },
+    normalizeMarkdown(value) {
+      return (value || "").replace(/\r\n/g, "\n").trimEnd();
     },
     setupEditor() {
       this.editor = this.createEditorInstance("");
@@ -804,12 +1014,14 @@ createApp({
 
       if (node.type !== "link") {
         this.selectedPath = null;
+        this.lastSavedMarkdown = "";
         this.pageDirty = false;
         return;
       }
 
       if (this.isExternalPath(node.path)) {
         this.selectedPath = null;
+        this.lastSavedMarkdown = "";
         this.pageDirty = false;
         return;
       }
@@ -848,11 +1060,18 @@ createApp({
     },
     async loadSettings() {
       const data = await this.api("/api/settings");
+      if (typeof data.preview?.url === "string" && data.preview.url.trim()) {
+        this.previewUrl = data.preview.url.trim();
+      }
+      if (typeof data.preview?.use_directory_urls === "boolean") {
+        this.previewUseDirectoryUrls = data.preview.use_directory_urls;
+      }
       this.settings.siteName = data.site_name || "";
       const allowed = data.upload?.allowed_types;
       this.settings.uploadAllowedTypes = Array.isArray(allowed) ? allowed : [];
       this.settings.uploadDir = data.upload?.dir || "assets/uploads";
       this.settings.navigationTabs = Boolean(data.theme?.navigation_tabs);
+      this.settings.navigationTabsSticky = Boolean(data.theme?.navigation_tabs_sticky);
       this.settings.docLanguage = data.theme?.language || "";
       this.settings.logoPath = data.theme?.logo || "";
       this.settings.logoIcon = data.theme?.logo_icon || "";
@@ -870,6 +1089,7 @@ createApp({
       this.settingsModal.uploadDir = this.settings.uploadDir;
       this.settingsModal.allowedTypesText = this.settings.uploadAllowedTypes.join(",");
       this.settingsModal.navigationTabs = this.settings.navigationTabs;
+      this.settingsModal.navigationTabsSticky = this.settings.navigationTabsSticky;
       this.settingsModal.docLanguage = this.settings.docLanguage;
       this.settingsModal.logoPath = this.settings.logoPath;
       this.settingsModal.logoIcon = this.settings.logoIcon;
@@ -903,14 +1123,23 @@ createApp({
     },
     docPathToPreviewPath(docPath) {
       const cleaned = (docPath || "").trim().replace(/^\/+/, "");
+      const useDirectoryUrls = this.previewUseDirectoryUrls;
       if (!cleaned || cleaned.toLowerCase() === "index.md") {
         return "/";
       }
       if (cleaned.toLowerCase().endsWith("/index.md")) {
-        return `/${cleaned.slice(0, -"index.md".length)}`;
+        const section = cleaned.slice(0, -"index.md".length);
+        if (useDirectoryUrls) {
+          return `/${section}`;
+        }
+        return `/${section.replace(/\/$/, "")}.html`;
       }
       if (cleaned.toLowerCase().endsWith(".md")) {
-        return `/${cleaned.slice(0, -3)}/`;
+        const stem = cleaned.slice(0, -3);
+        if (useDirectoryUrls) {
+          return `/${stem}/`;
+        }
+        return `/${stem}.html`;
       }
       return `/${cleaned}`;
     },
@@ -918,13 +1147,18 @@ createApp({
       const data = await this.api(`/api/page?path=${encodeURIComponent(path)}`);
       this.loadingPage = true;
       try {
-        await this.setEditorMarkdownSafe(data.content || "");
+        const loaded = data.content || "";
+        await this.setEditorMarkdownSafe(loaded);
+        this.lastSavedMarkdown = this.normalizeMarkdown(loaded);
         this.pageDirty = false;
       } finally {
         this.loadingPage = false;
       }
     },
     reloadPreview(preferredPath = null) {
+      if (preferredPath instanceof Event) {
+        preferredPath = null;
+      }
       const base = this.previewUrl.trim() || "http://127.0.0.1:8000";
       const url = new URL(base);
 
@@ -981,13 +1215,15 @@ createApp({
         return false;
       }
       try {
+        const markdown = this.editor.getMarkdown();
         await this.api("/api/page", {
           method: "POST",
           body: JSON.stringify({
             path: this.selectedPath,
-            content: this.editor.getMarkdown(),
+            content: markdown,
           }),
         });
+        this.lastSavedMarkdown = this.normalizeMarkdown(markdown);
         this.pageDirty = false;
         this.showToast(this.t("runtime.pageSaved"));
         const preferred = this.selectedPath ? this.docPathToPreviewPath(this.selectedPath) : null;
@@ -1154,6 +1390,7 @@ createApp({
       this.settingsModal.uploadDir = this.settings.uploadDir;
       this.settingsModal.allowedTypesText = this.settings.uploadAllowedTypes.join(",");
       this.settingsModal.navigationTabs = this.settings.navigationTabs;
+      this.settingsModal.navigationTabsSticky = this.settings.navigationTabsSticky;
       this.settingsModal.docLanguage = this.settings.docLanguage;
       this.settingsModal.logoPath = this.settings.logoPath;
       this.settingsModal.logoIcon = this.settings.logoIcon;
@@ -1289,6 +1526,7 @@ createApp({
             },
             theme: {
               navigation_tabs: Boolean(this.settingsModal.navigationTabs),
+              navigation_tabs_sticky: Boolean(this.settingsModal.navigationTabsSticky),
               language: docLanguage,
               logo: logoPath,
               logo_icon: logoIcon,
@@ -1381,6 +1619,7 @@ createApp({
         this.loadingPage = true;
         try {
           await this.setEditorMarkdownSafe(`# Externer Link\n\n[${title}](${path})\n`);
+          this.lastSavedMarkdown = "";
           this.pageDirty = false;
         } finally {
           this.loadingPage = false;
@@ -1511,6 +1750,7 @@ createApp({
         this.loadingPage = true;
         try {
           await this.setEditorMarkdownSafe("");
+          this.lastSavedMarkdown = "";
           this.pageDirty = false;
         } finally {
           this.loadingPage = false;
@@ -1628,11 +1868,17 @@ createApp({
         return;
       }
 
-      const isSaveShortcut = (event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "s";
+      const isSaveShortcut =
+        (event.ctrlKey || event.metaKey) &&
+        (event.key.toLowerCase() === "s" || event.code === "KeyS");
       if (!isSaveShortcut) {
         return;
       }
       event.preventDefault();
+      event.stopPropagation();
+      if (typeof event.stopImmediatePropagation === "function") {
+        event.stopImmediatePropagation();
+      }
 
       let didSaveAnything = false;
       if (this.pageDirty) {

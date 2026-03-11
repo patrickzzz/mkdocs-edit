@@ -1,0 +1,20 @@
+site_name: MkDocs Editor
+theme:
+  name: material
+  features:
+    - navigation.tabs
+nav:
+  - Erste Gruppe:
+      - Home!: index.md
+editor:
+  upload:
+    dir: assets/uploads
+    allowed_types:
+      - .png
+      - .jpg
+      - .jpeg
+      - .gif
+      - .svg
+      - .webp
+      - .pdf
+      - .zip
